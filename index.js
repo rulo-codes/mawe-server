@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 
 dotenv.config();
@@ -15,6 +18,10 @@ app.use(express.json());
 
 const weather_params = 'airTemperature,pressure,currentDirection,currentSpeed,gust,humidity,iceCover,precipitation,rain,snow,seaIceThickness,seaLevel,swellDirection,swellHeight,swellPeriod,waterTemperature,waveDirection,waveHeight,wavePeriod,windDirection,windSpeed';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+//Health Check
 app.get('/api/health', (req, res) => {
     res.status(200).json({ 
         status: 'success', 
@@ -22,6 +29,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+//Get Weather Api
 app.get('/api/weather', async (req, res) => {
     try{
       const {lat, lng} = req.query;
@@ -46,6 +54,31 @@ app.get('/api/weather', async (req, res) => {
       res.status(500).json({
         status: 'Server Error',
         message: error.message
+      })
+    }
+});
+
+
+//Test: Get data and filter out unnecessary data
+app.get('/api/test', async (req, res) => {
+    const jsonPath = path.join(__dirname, 'weather.json');
+    const date = new Date().toISOString();
+    const currentHourTarget = new Date().toISOString().substring(10, 13); // "2026-06-02T19"
+    const day = new Date().toISOString().substring(8, 10);
+
+    const weatherObject = [];
+
+    try{
+      const readData = fs.readFileSync(jsonPath, 'utf8');
+      const data = JSON.parse(readData);
+      const filterData = data.hours.filter(item => item.time.substring(10, 13) == currentHourTarget && parseInt(item.time.substring(8, 10)) < parseInt(day) + 7);
+
+      weatherObject.push({'lat':data.meta.lat,'lng':data.meta.lng,'date':date,'weather':filterData});
+      res.json(weatherObject);
+    }catch(err){
+      res.status(500).json({
+        status: 'Server Error',
+        message: err.message
       })
     }
 });
