@@ -59,22 +59,55 @@ app.get('/api/weather', async (req, res) => {
 });
 
 
+// Filter Data
+function filterCurrent(date, data){
+    const currentTime = date.substring(0,13);
+    const filterData = data.hours.filter(item => item.time.substring(0, 13) == currentTime);
+   
+    return filterData;
+}
+
+function filterHourly(date, data){
+    const currentDay = date.substring(0,10);
+    const filterData = data.hours.filter(item => item.time.substring(0, 10) == currentDay);
+
+    return filterData;
+}
+
+function filterDaily(date, data){
+    const currentHour = date.substring(10,13);
+    const filterData = data.hours.filter(item => item.time.substring(10, 13) == currentHour);
+    
+    return filterData;
+}
+
+function filterDataByTime(data){
+    const weatherData = { current: [], hourly: [], daily: [] };
+    const date = "2026-06-01T19:42:17.329Z";
+
+    const currentData = filterCurrent(date, data);
+    weatherData.current.push(currentData);
+
+    const hourlyData = filterHourly(date, data);
+    weatherData.hourly.push(hourlyData);
+
+    const dailyData = filterDaily(date, data);
+    weatherData.daily.push(dailyData);
+
+    return weatherData;
+}
+
 //Test: Get data and filter out unnecessary data
 app.get('/api/test', async (req, res) => {
     const jsonPath = path.join(__dirname, 'weather.json');
-    const date = new Date().toISOString();
-    const currentHourTarget = new Date().toISOString().substring(10, 13); // "2026-06-02T19"
-    const day = new Date().toISOString().substring(8, 10);
-
-    const weatherObject = [];
 
     try{
       const readData = fs.readFileSync(jsonPath, 'utf8');
       const data = JSON.parse(readData);
-      const filterData = data.hours.filter(item => item.time.substring(10, 13) == currentHourTarget && parseInt(item.time.substring(8, 10)) < parseInt(day) + 7);
+      
+      const filteredData = await filterDataByTime(data);
 
-      weatherObject.push({'lat':data.meta.lat,'lng':data.meta.lng,'date':date,'weather':filterData});
-      res.json(weatherObject);
+      res.json(filteredData);
     }catch(err){
       res.status(500).json({
         status: 'Server Error',
@@ -87,3 +120,9 @@ app.get('/api/test', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+/*
+Slack water times: Crucial for navigating narrow channels safely.
+Sunrise and sunset: Essential for compliance with navigation light laws.
+Moon phase: High-contrast indicators for spring tides (stronger currents) during full or new moons.
+*/
