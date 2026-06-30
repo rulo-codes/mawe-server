@@ -10,13 +10,17 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const weatherApi = process.env.WEATHER_API;
+const stormGlassApi = process.env.SG_API_KEY;
+const openWeatherApi = process.env.OW_API_KEY;
 
 app.use(cors());
 app.use(express.json());
 
 const weather_params =
   "airTemperature,pressure,cloudCover,currentDirection,currentSpeed,gust,humidity,iceCover,precipitation,rain,snow,seaIceThickness,seaLevel,swellDirection,swellHeight,swellPeriod,waterTemperature,waveDirection,waveHeight,wavePeriod,windDirection,windSpeed";
+
+const bio_params =
+  "chlorophyll,iron,nitrate,phyto,oxygen,ph,phytoplankton,phosphate,silicate,salinity";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,7 +49,7 @@ app.get("/api/weather", async (req, res) => {
       `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weather_params}&source=sg`,
       {
         headers: {
-          Authorization: weatherApi,
+          Authorization: stormGlassApi,
         },
       }
     );
@@ -53,6 +57,59 @@ app.get("/api/weather", async (req, res) => {
     const data = await response.json();
 
     res.json(data);
+  } catch (error) {
+    res.status(500).json({
+      status: "Server Error",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/bio", async (req, res) => {
+  try {
+    const lat = "11.746956869985965";
+    const lng = "124.86928660082111";
+    const date = "2026-06-30T15:21:30.257Z";
+
+    const response = await fetch(
+      `https://api.stormglass.io/v2/bio/point?lat=${lat}&lng=${lng}&params=${bio_params}`,
+      {
+        headers: {
+          Authorization: stormGlassApi,
+        },
+      }
+    );
+
+    const data = await response.json();
+    const currentData = filterCurrent(date, data);
+
+    res.json(currentData);
+    //https://api.openweathermap.org/data/4.0/onecall/alert/{alert_id}?appid=KEY
+  } catch (error) {
+    res.status(500).json({
+      status: "Server Error",
+      message: error.message,
+    });
+  }
+});
+
+app.get("/api/astronomy", async (req, res) => {
+  try {
+    const lat = "11.746956869985965";
+    const lng = "124.86928660082111";
+
+    const response = await fetch(
+      `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`,
+      {
+        headers: {
+          Authorization: stormGlassApi,
+        },
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+    //https://api.openweathermap.org/data/4.0/onecall/alert/{alert_id}?appid=KEY
   } catch (error) {
     res.status(500).json({
       status: "Server Error",
