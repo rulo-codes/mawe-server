@@ -146,18 +146,21 @@ function filterDaily(date, data) {
   return filterData;
 }
 
-function filterDataByTime(data) {
-  const weatherData = { code: [], current: [], hourly: [], daily: [] };
+export function filterDataByTime(data) {
+  // Keep `code` as an object, `current` as a single object (or null),
+  // and `hourly`/`daily` as flat arrays (no nested arrays).
+  const weatherData = { code: {}, current: null, hourly: [], daily: [] };
   const date = "2026-06-29T15:21:30.257Z";
 
-  const currentData = filterCurrent(date, data);
-  weatherData.current.push(currentData);
+  const currentData = filterCurrent(date, data); // returns an array
+  weatherData.current =
+    currentData && currentData.length ? currentData[0] : null;
 
-  const hourlyData = filterHourly(date, data);
-  weatherData.hourly.push(hourlyData);
+  const hourlyData = filterHourly(date, data); // returns an array
+  weatherData.hourly = Array.isArray(hourlyData) ? hourlyData : [];
 
-  const dailyData = filterDaily(date, data);
-  weatherData.daily.push(dailyData);
+  const dailyData = filterDaily(date, data); // returns an array
+  weatherData.daily = Array.isArray(dailyData) ? dailyData : [];
 
   return weatherData;
 }
@@ -172,7 +175,7 @@ app.get("/api/test", async (req, res) => {
 
     const filteredData = await filterDataByTime(data);
     const weatherCode = await getWeatherCode(data);
-    filteredData.code.push(weatherCode);
+    filteredData.code = weatherCode;
 
     res.json(filteredData);
   } catch (err) {
