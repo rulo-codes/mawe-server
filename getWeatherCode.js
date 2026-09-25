@@ -1,59 +1,78 @@
 export default function getWeatherCode(weatherData) {
   // Extract values using StormGlass default 'sg' source
-  const precipitation = weatherData.precipitation?.sg ?? 0;
-  const cloudCover = weatherData.cloudCover?.sg ?? 0;
-  const visibility = weatherData.visibility?.sg ?? 20;
-  const windSpeed = weatherData.windSpeed?.sg ?? 0;
-  const gust = weatherData.gust?.sg ?? 0;
-  const airPressure = weatherData.airPressure?.sg ?? 1013.25;
+  const precipitation = Number(weatherData.precipitation?.sg ?? 0);
+  const cloudCover = Number(weatherData.cloudCover?.sg ?? 0);
+  const visibility = Number(weatherData.visibility?.sg ?? 20);
+  const windSpeed = Number(weatherData.windSpeed?.sg ?? 0);
+  const gust = Number(weatherData.gust?.sg ?? 0);
+  const airPressure = Number(
+    weatherData.airPressure?.sg ?? weatherData.pressure?.sg ?? 1013.25
+  );
 
-  // Sever Weather Storm Alerts
-  // Tropical Cyclone / Hurricane Check (Extreme low pressure + extreme sustained winds)
-  if (airPressure < 990 && windSpeed > 32) {
+  // Severe Weather Storm Alerts (marine thresholds based on StormGlass data)
+  // Tropical Cyclone / Hurricane Check (very low pressure + sustained strong winds)
+  if (airPressure <= 980 && (windSpeed >= 32 || gust >= 38)) {
     return {
       condition: "Hurricane / Tropical Cyclone Force",
-      iconId: "extreme_cyclone",
+      iconId: "extreme_weather",
       alertLevel: "CRITICAL",
     };
   }
 
   // Tropical Storm / Severe Gale Check
-  if (airPressure < 1002 && (windSpeed > 17 || gust > 24)) {
+  if (airPressure <= 1000 && (windSpeed >= 20 || gust >= 24)) {
     return {
       condition: "Tropical Storm Warning",
-      iconId: "extreme_storm",
+      iconId: "extreme_weather",
       alertLevel: "WARNING",
     };
   }
 
-  //Convective Checks
-  if (precipitation > 2.5) {
-    if (gust > 15) {
+  // Convective Checks
+  if (precipitation >= 2.5 && (gust >= 12 || windSpeed >= 12)) {
+    if (gust >= 18 || windSpeed >= 18) {
       return {
         condition: "Severe Thunderstorm",
-        iconId: "thunderstorm_severe",
+        iconId: "thunderstorm",
         alertLevel: "ADVISORY",
       };
-    } else if (gust > 11) {
-      return {
-        condition: "Thunderstorm",
-        iconId: "thunderstorm",
-        alertLevel: "NONE",
-      };
     }
+    return {
+      condition: "Thunderstorm",
+      iconId: "thunderstorm",
+      alertLevel: "NONE",
+    };
   }
 
-  //Standard Weather Conditions
-  // Dry High Wind Safety Hazard
-  if (windSpeed > 11 || gust > 15) {
+  // Standard Weather Conditions
+  // Dry High Wind Safety Hazard (10.8 m/s is a strong breeze / near-gale on open water)
+  if (windSpeed >= 10.8 || gust >= 14.4) {
     return { condition: "Windy / Gale", iconId: "windy", alertLevel: "NONE" };
   }
 
-  // Standard Rain
-  if (precipitation > 0) {
-    return precipitation <= 2.5
-      ? { condition: "Light Rain", iconId: "rain_light", alertLevel: "NONE" }
-      : { condition: "Heavy Rain", iconId: "rain_heavy", alertLevel: "NONE" };
+  // Precipitation bands for StormGlass mm/h values
+  if (precipitation >= 8) {
+    return {
+      condition: "Heavy Rain",
+      iconId: "rain_heavy",
+      alertLevel: "NONE",
+    };
+  }
+
+  if (precipitation >= 5) {
+    return {
+      condition: "Moderate Rain",
+      iconId: "rain_light",
+      alertLevel: "NONE",
+    };
+  }
+
+  if (precipitation > 1) {
+    return {
+      condition: "Light Rain",
+      iconId: "rain_light",
+      alertLevel: "NONE",
+    };
   }
 
   // Fog and Visibility Restrictions
@@ -63,21 +82,31 @@ export default function getWeatherCode(weatherData) {
     return { condition: "Misty / Hazy", iconId: "mist", alertLevel: "NONE" };
   }
 
-  // Cloud Cover Mapping (Clear Sky spectrum)
-  if (cloudCover < 10) {
+  // Cloud Cover Mapping (StormGlass cloudCover is a 0-100% percentage)
+  if (cloudCover < 15) {
     return {
       condition: "Sunny / Clear",
       iconId: "clear_sky",
       alertLevel: "NONE",
     };
-  } else if (cloudCover <= 50) {
+  } else if (cloudCover < 50) {
     return {
       condition: "Partly Cloudy",
       iconId: "cloudy_partly",
       alertLevel: "NONE",
     };
+  } else if (cloudCover < 90) {
+    return {
+      condition: "Cloudy",
+      iconId: "cloudy_full",
+      alertLevel: "NONE",
+    };
   } else {
-    return { condition: "Cloudy", iconId: "cloudy_full", alertLevel: "NONE" };
+    return {
+      condition: "Overcast",
+      iconId: "cloudy_full",
+      alertLevel: "NONE",
+    };
   }
 }
 

@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 const weather_params =
-  "airTemperature,pressure,cloudCover,currentDirection,currentSpeed,gust,humidity,iceCover,precipitation,rain,snow,seaIceThickness,seaLevel,swellDirection,swellHeight,swellPeriod,waterTemperature,waveDirection,waveHeight,wavePeriod,windDirection,windSpeed";
+  "airTemperature,pressure,cloudCover,currentDirection,currentSpeed,gust,humidity,iceCover,precipitation,rain,snow,seaIceThickness,seaLevel,swellDirection,swellHeight,swellPeriod,waterTemperature,waveDirection,waveHeight,wavePeriod,windDirection,windSpeed,visibility";
 
 const bio_params =
   "chlorophyll,iron,nitrate,phyto,oxygen,ph,phytoplankton,phosphate,silicate,salinity";
@@ -32,6 +32,8 @@ app.get("/api/health", (req, res) => {
     message: "Server is running perfectly!",
   });
 });
+
+//Coordinates for testing = ... ?lng=124.86928660082111&lat=11.746956869985965
 
 //Get Weather Api
 app.get("/api/weather", async (req, res) => {
@@ -149,35 +151,57 @@ function filterDaily(date, data) {
 export function filterDataByTime(data) {
   // Keep `code` as an object, `current` as a single object (or null),
   // and `hourly`/`daily` as flat arrays (no nested arrays).
-  const weatherData = { code: {}, current: null, hourly: [], daily: [] };
-  const date = "2026-06-29T15:21:30.257Z";
+  const filteredData = { current: null, hourly: [], daily: [] };
+  const date = "2026-07-10T15:21:30.257Z";
 
   const currentData = filterCurrent(date, data); // returns an array
-  weatherData.current =
-    currentData && currentData.length ? currentData[0] : null;
+  filteredData.current = currentData[0]
+    ? { ...currentData[0], weatherCode: getWeatherCode(currentData[0]) }
+    : null;
 
   const hourlyData = filterHourly(date, data); // returns an array
-  weatherData.hourly = Array.isArray(hourlyData) ? hourlyData : [];
+  filteredData.hourly = hourlyData.map((item) => ({
+    ...item,
+    weatherCode: getWeatherCode(item),
+  }));
 
   const dailyData = filterDaily(date, data); // returns an array
-  weatherData.daily = Array.isArray(dailyData) ? dailyData : [];
+  filteredData.daily = Array.isArray(dailyData)
+    ? dailyData.map((item) => ({
+        ...item,
+        weatherCode: getWeatherCode(item),
+      }))
+    : [];
 
-  return weatherData;
+  return filteredData;
 }
 
 //Test: Get data and filter out unnecessary data
 app.get("/api/test", async (req, res) => {
-  const jsonPath = path.join(__dirname, "weather.json");
+  const weatherPath = path.join(__dirname, "weather.json");
+  const bioPath = path.join(__dirname, "bio.json");
+  const astroPath = path.join(__dirname, "astro.json");
+
+  const date = "2026-07-10T15:21:30.257Z";
 
   try {
-    const readData = fs.readFileSync(jsonPath, "utf8");
-    const data = JSON.parse(readData);
+    const readWeatherData = fs.readFileSync(weatherPath, "utf8");
+    const weatherData = JSON.parse(readWeatherData);
 
-    const filteredData = await filterDataByTime(data);
-    const weatherCode = await getWeatherCode(data);
-    filteredData.code = weatherCode;
+    const readBioData = fs.readFileSync(bioPath, "utf8");
+    const bioData = filterHourly(date, JSON.parse(readBioData));
 
-    res.json(filteredData);
+    const readAstroData = fs.readFileSync(astroPath, "utf8");
+    const astroData = JSON.parse(readAstroData);
+
+    const filteredData = await filterDataByTime(weatherData);
+    const data = {
+      ...filteredData,
+      bio: bioData,
+      astronomy: astroData.data[0],
+    };
+
+    res.json(data);
   } catch (err) {
     res.status(500).json({
       status: "Server Error",
